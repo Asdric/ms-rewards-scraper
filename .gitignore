@@ -1,0 +1,6 @@
+venv/
+firefox_portable/
+__pycache__/
+*.pyc
+firefox_persistent_profile/
+firefox_profile/
