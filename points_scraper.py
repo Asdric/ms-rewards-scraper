@@ -318,7 +318,7 @@ def main():
     print(f"Loaded {len(search_chains)} search chains")
     
     searches = []
-    while len(searches) < 33:
+    while len(searches) < 15:
         searches.extend(random.choice(search_chains))
 
     print(f"Performing {len(searches)} searches.")
