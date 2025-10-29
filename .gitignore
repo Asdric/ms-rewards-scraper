@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 firefox_persistent_profile/
 firefox_profile/
+build/
+dist/
+*.spec
+QWEN.md

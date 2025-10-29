@@ -14,58 +14,161 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.edge.service import Service as EdgeService
+from selenium.webdriver.edge.options import Options as EdgeOptions
 from webdriver_manager.firefox import GeckoDriverManager
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
-FIREFOX_VERSION = "125.0.3"
-
-def get_firefox_url():
+def find_installed_firefox():
+    """Find installed Firefox browser on the system"""
     system = platform.system()
-    arch = platform.machine()
-
     if system == "Windows":
-        return f"https://ftp.mozilla.org/pub/firefox/releases/{FIREFOX_VERSION}/win64/en-US/firefox-{FIREFOX_VERSION}.zip"
-    elif system == "Darwin":
-        if "aarch64" in arch.lower() or "arm64" in arch.lower():
-             return f"https://ftp.mozilla.org/pub/firefox/releases/{FIREFOX_VERSION}/mac-aarch64/en-US/Firefox%20{FIREFOX_VERSION}.dmg"
-        else:
-            return f"https://ftp.mozilla.org/pub/firefox/releases/{FIREFOX_VERSION}/mac/en-US/Firefox%20{FIREFOX_VERSION}.dmg"
+        # Check common installation locations for Firefox on Windows
+        firefox_locations = [
+            os.path.join(os.environ.get("PROGRAMFILES", "C:\\Program Files"), "Mozilla Firefox", "firefox.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES(X86)", "C:\\Program Files (x86)"), "Mozilla Firefox", "firefox.exe"),
+            os.path.join(os.environ.get("LOCALAPPDATA", "C:\\Users\\Default\\AppData\\Local"), "Mozilla Firefox", "firefox.exe")
+        ]
+        for location in firefox_locations:
+            if os.path.exists(location):
+                return location
+    elif system == "Darwin":  # macOS
+        location = "/Applications/Firefox.app/Contents/MacOS/firefox"
+        if os.path.exists(location):
+            return location
     elif system == "Linux":
-        return f"https://ftp.mozilla.org/pub/firefox/releases/{FIREFOX_VERSION}/linux-x86_64/en-US/firefox-{FIREFOX_VERSION}.tar.bz2"
-    else:
-        raise Exception(f"Unsupported operating system: {system}")
-
-def setup_portable_firefox():
-    firefox_dir = os.path.join(os.getcwd(), "firefox_portable")
-    firefox_exe = os.path.join(firefox_dir, "firefox", "firefox.exe" if platform.system() == "Windows" else "firefox")
-
-    if not os.path.exists(firefox_exe):
-        print("Portable Firefox not found. Downloading...")
-        url = get_firefox_url()
-        filename = url.split("/")[-1].replace("%20", " ")
-        download_path = os.path.join(os.getcwd(), filename)
-
-        with urllib.request.urlopen(url) as response, open(download_path, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file)
-
-        print(f"Downloaded {filename}. Extracting...")
-
-        if filename.endswith(".zip"):
-            with zipfile.ZipFile(download_path, 'r') as zip_ref:
-                zip_ref.extractall(firefox_dir)
-        elif filename.endswith(".tar.bz2"):
-            with tarfile.open(download_path, "r:bz2") as tar:
-                tar.extractall(firefox_dir)
-        elif filename.endswith(".dmg"):
-            print("DMG downloaded. Please mount it and copy the Firefox application to the 'firefox_portable' directory.")
+        # Check common locations or use which command
+        import subprocess
+        try:
+            result = subprocess.run(["which", "firefox"], capture_output=True, text=True)
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except:
             pass
+        # Check common installation locations for Linux
+        linux_locations = [
+            "/usr/bin/firefox",
+            "/usr/local/bin/firefox",
+            "/snap/bin/firefox"
+        ]
+        for location in linux_locations:
+            if os.path.exists(location):
+                return location
 
-        os.remove(download_path)
-        print("Extraction complete.")
+    return None
 
-    return firefox_exe
+def find_installed_chrome():
+    """Find installed Chrome browser on the system"""
+    system = platform.system()
+    if system == "Windows":
+        # Check common installation locations for Chrome on Windows
+        chrome_locations = [
+            os.path.join(os.environ.get("PROGRAMFILES", "C:\\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES(X86)", "C:\\Program Files (x86)"), "Google", "Chrome", "Application", "chrome.exe"),
+            os.path.join(os.environ.get("LOCALAPPDATA", "C:\\Users\\Default\\AppData\\Local"), "Google", "Chrome", "Application", "chrome.exe"),  # User-specific installation
+            os.path.join(os.environ.get("PROGRAMFILES", "C:\\Program Files"), "Google", "Chrome Dev", "Application", "chrome.exe"),  # Chrome Dev
+            os.path.join(os.environ.get("PROGRAMFILES(X86)", "C:\\Program Files (x86)"), "Google", "Chrome Dev", "Application", "chrome.exe"),
+        ]
+        for location in chrome_locations:
+            if os.path.exists(location):
+                return location
+    elif system == "Darwin":  # macOS
+        location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        if os.path.exists(location):
+            return location
+    elif system == "Linux":
+        # Check common locations or use which command
+        import subprocess
+        try:
+            result = subprocess.run(["which", "google-chrome"], capture_output=True, text=True)
+            if result.returncode == 0:
+                return result.stdout.strip()
+            result = subprocess.run(["which", "google-chrome-stable"], capture_output=True, text=True)
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except:
+            pass
+        # Check common installation locations for Linux
+        linux_locations = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/local/bin/google-chrome",
+            "/snap/bin/google-chrome"
+        ]
+        for location in linux_locations:
+            if os.path.exists(location):
+                return location
+
+    return None
+
+def find_installed_edge():
+    """Find installed Edge browser on the system"""
+    system = platform.system()
+    if system == "Windows":
+        # Check common installation locations for Edge on Windows
+        edge_locations = [
+            os.path.join(os.environ.get("PROGRAMFILES", "C:\\Program Files"), "Microsoft", "Edge", "Application", "msedge.exe"),
+            os.path.join(os.environ.get("PROGRAMFILES(X86)", "C:\\Program Files (x86)"), "Microsoft", "Edge", "Application", "msedge.exe"),
+            os.path.join(os.environ.get("LOCALAPPDATA", "C:\\Users\\Default\\AppData\\Local"), "Microsoft", "Edge", "Application", "msedge.exe")
+        ]
+        for location in edge_locations:
+            if os.path.exists(location):
+                return location
+    elif system == "Darwin":  # macOS
+        location = "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+        if os.path.exists(location):
+            return location
+    elif system == "Linux":
+        # Check common locations or use which command
+        import subprocess
+        try:
+            result = subprocess.run(["which", "microsoft-edge"], capture_output=True, text=True)
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except:
+            pass
+        # Check common installation locations for Linux
+        linux_locations = [
+            "/usr/bin/microsoft-edge",
+            "/usr/bin/microsoft-edge-stable",
+            "/usr/local/bin/microsoft-edge"
+        ]
+        for location in linux_locations:
+            if os.path.exists(location):
+                return location
+
+    return None
+
+def setup_browser():
+    """Find and set up an installed browser for use"""
+    print("Looking for installed browsers...")
+    
+    # Try Firefox first
+    firefox_path = find_installed_firefox()
+    if firefox_path:
+        print(f"Found Firefox at: {firefox_path}")
+        return "firefox", firefox_path
+
+    # Then try Chrome
+    chrome_path = find_installed_chrome()
+    if chrome_path:
+        print(f"Found Chrome at: {chrome_path}")
+        return "chrome", chrome_path
+
+    # Finally try Edge
+    edge_path = find_installed_edge()
+    if edge_path:
+        print(f"Found Edge at: {edge_path}")
+        return "edge", edge_path
+
+    # If no browser is found, raise an exception
+    raise Exception("No supported browser (Firefox, Chrome, or Edge) found on the system.")
 
 def load_search_terms(filename="search_terms.json"):
     with open(filename, "r") as f:
@@ -135,25 +238,71 @@ def human_like_actions(driver):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--private", action="store_true", help="Use a private window.")
+    parser.add_argument("--browser", choices=["firefox", "chrome", "edge"], help="Specify which browser to use (default: auto-detect)")
     args = parser.parse_args()
 
     print("Starting the Microsoft Rewards points scraper.")
-    print("This script uses a portable version of Firefox to ensure compatibility.")
+    print("This script will use an installed browser (Firefox, Chrome, or Edge) on your system.")
 
     try:
-        firefox_binary = setup_portable_firefox()
-        options = FirefoxOptions()
-        options.binary_location = firefox_binary
-        if args.private:
-            options.add_argument("-private")
+        # Set up the browser based on user preference or auto-detection
+        if args.browser:
+            browser_type = args.browser
+            if args.browser == "firefox":
+                browser_path = find_installed_firefox()
+            elif args.browser == "chrome":
+                browser_path = find_installed_chrome()
+            elif args.browser == "edge":
+                browser_path = find_installed_edge()
+            
+            if not browser_path:
+                raise Exception(f"{args.browser} not found on the system.")
         else:
-            profile_path = os.path.join(os.getcwd(), 'firefox_persistent_profile')
-            if not os.path.exists(profile_path):
-                os.makedirs(profile_path)
-            options.add_argument(f"-profile")
-            options.add_argument(profile_path)
+            browser_type, browser_path = setup_browser()
 
-        driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
+        if browser_type == "firefox":
+            options = FirefoxOptions()
+            options.binary_location = browser_path
+            if args.private:
+                options.add_argument("-private-window")  # Firefox uses -private-window for private browsing
+            else:
+                profile_path = os.path.join(os.getcwd(), 'firefox_persistent_profile')
+                if not os.path.exists(profile_path):
+                    os.makedirs(profile_path)
+                options.add_argument("-profile")
+                options.add_argument(profile_path)
+
+            service = FirefoxService(GeckoDriverManager().install())
+            driver = webdriver.Firefox(service=service, options=options)
+        elif browser_type == "chrome":
+            options = ChromeOptions()
+            options.binary_location = browser_path
+            if args.private:
+                options.add_argument("--incognito")
+            else:
+                user_data_dir = os.path.join(os.getcwd(), 'chrome_persistent_profile')
+                if not os.path.exists(user_data_dir):
+                    os.makedirs(user_data_dir)
+                options.add_argument(f"--user-data-dir={user_data_dir}")
+
+            service = ChromeService(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
+        elif browser_type == "edge":
+            options = EdgeOptions()
+            options.binary_location = browser_path
+            if args.private:
+                options.add_argument("--inprivate")
+            else:
+                user_data_dir = os.path.join(os.getcwd(), 'edge_persistent_profile')
+                if not os.path.exists(user_data_dir):
+                    os.makedirs(user_data_dir)
+                options.add_argument(f"--user-data-dir={user_data_dir}")
+
+            service = EdgeService(EdgeChromiumDriverManager().install())
+            driver = webdriver.Edge(service=service, options=options)
+        else:
+            raise Exception(f"Unsupported browser type: {browser_type}")
+
         wait = WebDriverWait(driver, 10)
     except Exception as e:
         print(f"Error setting up the driver: {e}")
@@ -164,17 +313,34 @@ def main():
     input("Please ensure you are logged in to your Microsoft account, then press Enter here to continue...")
 
     main_window = driver.current_window_handle
+    print("Loading search terms...")
     search_chains = load_search_terms()
+    print(f"Loaded {len(search_chains)} search chains")
+    
     searches = []
-    while len(searches) < 33:
+    while len(searches) < 15:
         searches.extend(random.choice(search_chains))
 
     print(f"Performing {len(searches)} searches.")
 
     for i, search_term in enumerate(searches):
         try:
+            # Check if main window is still available, if not, try to find a valid window
+            try:
+                driver.switch_to.window(main_window)
+            except:
+                # If main window is not available, use the current window or first available
+                if len(driver.window_handles) > 0:
+                    main_window = driver.window_handles[0]
+                    driver.switch_to.window(main_window)
+                else:
+                    print("No windows available, stopping execution.")
+                    break
+            
             driver.execute_script("window.open('');")
-            driver.switch_to.window(driver.window_handles[-1])
+            # Get the new window handle (last in the list)
+            new_window_handle = driver.window_handles[-1]
+            driver.switch_to.window(new_window_handle)
             driver.get("https://www.bing.com")
             
             check_for_captcha(driver)
@@ -192,18 +358,37 @@ def main():
             time.sleep(random.uniform(2, 5))
             human_like_actions(driver)
 
+            # Close current window and return to main window
             driver.close()
-            driver.switch_to.window(main_window)
+            
+            # Switch back to main window, but validate it exists first
+            if main_window in driver.window_handles:
+                driver.switch_to.window(main_window)
+            elif len(driver.window_handles) > 0:
+                # If main window doesn't exist, use the first available window as main
+                main_window = driver.window_handles[0]
+                driver.switch_to.window(main_window)
+            else:
+                print("No windows available after closing search window.")
+                break
 
         except Exception as e:
             print(f"An error occurred during search {i + 1}: {e}")
-            # Attempt to recover by closing the tab and going back to the main window
+            # Attempt to recover by checking for available windows
             try:
-                driver.close()
+                if len(driver.window_handles) > 0:
+                    # Check if main window still exists, otherwise use first available
+                    if main_window in driver.window_handles:
+                        driver.switch_to.window(main_window)
+                    else:
+                        main_window = driver.window_handles[0]
+                        driver.switch_to.window(main_window)
+                else:
+                    print("No windows available to recover to.")
+                    break
             except:
-                pass
-            driver.switch_to.window(main_window)
-            driver.get("https://www.bing.com")
+                print("Could not switch to any window, stopping execution.")
+                break
 
     print("All searches completed.")
 

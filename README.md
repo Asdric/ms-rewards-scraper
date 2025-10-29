@@ -17,7 +17,7 @@ This script automates the process of earning Microsoft Rewards points by perform
 
 1.  **Clone the repository:**
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/Asdric/ms-rewards-scraper.git
     cd MS-Rewards-Scraper
     ```
 
