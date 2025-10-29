@@ -7,3 +7,4 @@ firefox_profile/
 build/
 dist/
 *.spec
+QWEN.md
